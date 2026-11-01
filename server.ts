@@ -435,6 +435,38 @@ app.post('/api/admin/test-telegram', async (req: Request, res: Response): Promis
   }
 });
 
+// Informative GET /api/upload
+app.get('/api/upload', (_req: Request, res: Response): void => {
+  res.json({
+    status: 'ready',
+    endpoint: '/api/upload',
+    methods: ['POST'],
+    description: 'Send a POST request with JSON body { fileData: "data:image/jpeg;base64,...", fileName: "...", mimeType: "..." }',
+  });
+});
+
+// Explicit API catch-all: Never return HTML for any /api route
+app.all('/api/*', (req: Request, res: Response): void => {
+  res.status(404).json({
+    error: `API route not found: ${req.method} ${req.originalUrl}`,
+    status: 404,
+  });
+});
+
+// Global API Error Handler (e.g., PayloadTooLargeError, invalid JSON body)
+app.use((err: any, req: Request, res: Response, next: NextFunction): void => {
+  if (req.originalUrl.startsWith('/api/')) {
+    const status = err.status || err.statusCode || 500;
+    res.status(status).json({
+      error: err.message || 'API request error',
+      code: err.type || err.code || 'API_ERROR',
+      status,
+    });
+    return;
+  }
+  next(err);
+});
+
 // ================= FRONTEND SERVING & SSR META INJECTION =================
 
 async function setupViteAndServe() {

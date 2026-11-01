@@ -16,6 +16,8 @@ import {
   Maximize2
 } from 'lucide-react';
 import { PhotoRecord } from '../types';
+import { safeFetchJson } from '../utils/api';
+import { getPhotoFromLocalVault } from '../utils/vault';
 
 interface PhotoViewerProps {
   photoId: string;
@@ -42,13 +44,22 @@ export const PhotoViewer: React.FC<PhotoViewerProps> = ({
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/photos/${photoId}`);
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Photo not found or link has expired.');
+        try {
+          const data = await safeFetchJson<{ success: boolean; photo: PhotoRecord }>(`/api/photos/${photoId}`);
+          if (data && data.success && data.photo && isMounted) {
+            setPhoto(data.photo);
+            return;
+          }
+        } catch (apiErr: any) {
+          console.warn('API lookup issue, checking local vault cache:', apiErr.message);
         }
-        if (isMounted) {
-          setPhoto(data.photo);
+
+        // Fallback to local vault
+        const localPhoto = getPhotoFromLocalVault(photoId);
+        if (localPhoto && isMounted) {
+          setPhoto(localPhoto);
+        } else if (isMounted) {
+          setError('Photo not found or link has expired.');
         }
       } catch (err: any) {
         if (isMounted) {

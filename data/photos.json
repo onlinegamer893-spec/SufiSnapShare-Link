@@ -1,1 +1,14 @@
-{}
+{
+  "5ie9HG4": {
+    "id": "5ie9HG4",
+    "originalName": "real-test-photo.jpg",
+    "mimeType": "image/jpeg",
+    "size": 134,
+    "imageUrl": "/uploads/5ie9HG4.jpg",
+    "createdAt": "2026-11-01T17:25:08.311Z",
+    "status": "active",
+    "views": 1,
+    "telegramSent": false,
+    "telegramError": "Bad Request: chat not found"
+  }
+}

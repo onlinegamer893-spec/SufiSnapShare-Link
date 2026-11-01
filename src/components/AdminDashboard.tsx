@@ -18,6 +18,7 @@ import {
   Layers
 } from 'lucide-react';
 import { PhotoRecord } from '../types';
+import { safeFetchJson } from '../utils/api';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -43,26 +44,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onViewPh
   const fetchAdminData = async (authToken: string) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/stats', {
+      const data = await safeFetchJson<any>('/api/admin/stats', {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        if (res.status === 401) {
-          localStorage.removeItem('sufi_admin_token');
-          setToken(null);
-          setLoginError('Session expired. Please enter password again.');
-        } else {
-          setLoginError(data.error || 'Failed to load admin stats.');
-        }
+      if (!data || !data.success) {
+        setLoginError(data?.error || 'Failed to load admin stats.');
         return;
       }
       setStats(data.stats);
       setPhotos(data.photos || []);
     } catch (err: any) {
-      setLoginError(err.message || 'Connection error');
+      if (err.message?.includes('401')) {
+        localStorage.removeItem('sufi_admin_token');
+        setToken(null);
+        setLoginError('Session expired. Please enter password again.');
+      } else {
+        setLoginError(err.message || 'Connection error');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,14 +79,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onViewPh
     setLoginError(null);
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/login', {
+      const data = await safeFetchJson<any>('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Invalid credentials');
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Invalid credentials');
       }
       setToken(data.token);
       localStorage.setItem('sufi_admin_token', data.token);
@@ -108,22 +107,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onViewPh
   const handleDeletePhoto = async (id: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/admin/photos/${id}`, {
+      const data = await safeFetchJson<any>(`/api/admin/photos/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (data && data.success) {
         setPhotos((prev) => prev.filter((p) => p.id !== id));
         if (stats) {
           setStats({ ...stats, totalPhotos: Math.max(0, stats.totalPhotos - 1) });
         }
         setDeleteConfirmId(null);
       }
-    } catch (err) {
-      console.error('Delete error:', err);
+    } catch (err: any) {
+      console.error('Delete error:', err.message);
     }
   };
 
@@ -132,17 +130,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onViewPh
     setTestingTelegram(true);
     setTestResult(null);
     try {
-      const res = await fetch('/api/admin/test-telegram', {
+      const data = await safeFetchJson<any>('/api/admin/test-telegram', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (data && data.success) {
         setTestResult({ success: true, message: 'Ping delivered to Telegram Chat #8851455020!' });
       } else {
-        setTestResult({ success: false, message: data.error || 'Failed to ping Telegram' });
+        setTestResult({ success: false, message: data?.error || 'Failed to ping Telegram' });
       }
     } catch (err: any) {
       setTestResult({ success: false, message: err.message || 'Telegram connection failed' });

@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // SufiSnapShare Photos collection
+    match /photos/{photoId} {
+      // Anyone can read active photos by short ID
+      allow get: if resource.data.status == 'active';
+      
+      // List/querying is restricted to authenticated admins
+      allow list: if request.auth != null && request.auth.token.admin == true;
+      
+      // Creation allowed with strict field validation
+      allow create: if request.resource.data.keys().hasAll(['id', 'imageUrl', 'createdAt', 'status'])
+                    && request.resource.data.id == photoId
+                    && request.resource.data.status == 'active'
+                    && request.resource.data.size <= 26214400; // 25MB max
+                    
+      // Updates (e.g., view count increments)
+      allow update: if request.auth != null 
+                    || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']));
+      
+      // Deletion is strictly reserved for authenticated administrators
+      allow delete: if request.auth != null && request.auth.token.admin == true;
+    }
+    
+    // System analytics & audit logs
+    match /system/{docId} {
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
+    }
+  }
+}

@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /photos/{photoFile} {
+      // Allow public read for uploaded images
+      allow read: if true;
+      
+      // Allow upload with validation: image only, max 25MB
+      allow write: if request.resource.size < 25 * 1024 * 1024
+                   && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
+      
+      // Delete only allowed for admin
+      allow delete: if request.auth != null && request.auth.token.admin == true;
+    }
+  }
+}
